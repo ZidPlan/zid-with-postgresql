@@ -31,6 +31,15 @@ Generate some random bytes by using the pgcrypto function gen_random_bytes:
 select gen_random_bytes(16);
 ```
 
+Output:
+
+```sql
+          gen_random_bytes          
+------------------------------------
+ \xedc264fffe7976adf042fff2fb8b1b06
+(1 row)
+```
+
 
 ## Create zid function
 
@@ -70,6 +79,7 @@ CREATE TABLE t1 (
 );
 ```
 
+
 ### Insert
 
 Insert an example row:
@@ -77,6 +87,7 @@ Insert an example row:
 ```sql
 insert into t1 values (default, 'alice');
 ```
+
 
 ### Read
 
@@ -109,6 +120,7 @@ CREATE TABLE t2 (
 );
 ```
 
+
 ### Insert
 
 Insert an example row:
@@ -117,6 +129,7 @@ Insert an example row:
 insert into t2 values (default, 'alice');
 ```
 
+
 ### Read
 
 Read results:
@@ -124,6 +137,7 @@ Read results:
 ```sql
 select * from t2;
 ```
+
 
 ### Caveat
 
