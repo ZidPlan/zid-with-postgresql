@@ -73,9 +73,8 @@ Output:
 Create an example table with a byte array as the primary key:
 
 ```sql
-CREATE TABLE t1 (
-   id bytea DEFAULT zid(128) PRIMARY KEY,
-   name text
+CREATE TABLE t (
+   id bytea DEFAULT zid(128) PRIMARY KEY
 );
 ```
 
@@ -85,7 +84,7 @@ CREATE TABLE t1 (
 Insert an example row:
 
 ```sql
-insert into t1 values (default, 'alice');
+insert into t values (default);
 ```
 
 
@@ -94,7 +93,7 @@ insert into t1 values (default, 'alice');
 Read results:
 
 ```sql
-select * from t1;
+select * from t;
 ```
 
 
@@ -114,9 +113,8 @@ CREATE FUNCTION zid_as_uuid() RETURNS uuid
 Create an example table with a UUID data type as the primary key:
 
 ```sql
-CREATE TABLE t2 (
-   id uuid DEFAULT zid_as_uuid() PRIMARY KEY,
-   name text
+CREATE TABLE  (
+   id uuid DEFAULT zid_as_uuid() PRIMARY KEY
 );
 ```
 
@@ -126,7 +124,7 @@ CREATE TABLE t2 (
 Insert an example row:
 
 ```sql
-insert into t2 values (default, 'alice');
+insert into t values (default);
 ```
 
 
@@ -135,10 +133,158 @@ insert into t2 values (default, 'alice');
 Read results:
 
 ```sql
-select * from t2;
+select * from 2;
 ```
 
 
 ### Caveat
 
 Note that the output UUID will likely be invalid because the zid is completely random and deliberately isn't compatible with the UUID specification.
+
+
+
+## Compare uuid-ossp
+
+Load the uuid-ossp extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+
+### Create an example table
+
+Create an example table with a UUID data type as the primary key:
+
+```sql
+CREATE TABLE t (
+   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY
+);
+```
+
+
+### Insert
+
+Insert an example row:
+
+```sql
+insert into t values (default);
+```
+
+
+### Read
+
+Read results:
+
+```sql
+select * from t;
+```
+
+
+## Benchmarks
+
+
+### Create tables
+
+Create tables with the various kinds of primary keys:
+
+```sql
+CREATE TABLE benchmark_zid_128 (
+   id bytea DEFAULT zid(128) PRIMARY KEY
+);
+
+CREATE TABLE benchmark_zid_as_uuid (
+   id uuid DEFAULT zid_as_uuid() PRIMARY KEY
+);
+
+CREATE TABLE benchmark_uuid_generate_v4 (
+   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY
+);
+````
+
+
+### Configure
+
+Turn on timing:
+
+```psql
+\timing
+```
+
+Turn off pager:
+
+```psql
+\pset pager 0
+```
+
+
+### Benchmark insert
+
+Benchmark a million insert statements for each table:
+
+```psql
+do $$
+begin
+for i in 1..1000000 loop
+insert into benchmark_zid_128 values(default);
+end loop;
+end;
+$$;
+-- Time: 4549.356 ms (00:04.549)
+
+do $$
+begin
+for i in 1..1000000 loop
+insert into benchmark_zid_as_uuid values(default);
+end loop;
+end;
+$$;
+-- Time: 5349.053 ms (00:05.349)
+
+do $$
+begin
+for i in 1..1000000 loop
+insert into benchmark_uuid_generate_v4 values(default);
+end loop;
+end;
+$$;
+-- Time: 5897.088 ms (00:05.897)
+```
+
+| Algorithm   | Time |
+|-------------|------|
+| zid_128     | 4549 |
+| zid_as_uuid | 5349 |
+| uuid_v4     | 5897 |
+
+Summary: benchmarks are similar.
+
+
+### Benchmark inner join
+
+Benchmark select statements for all million randomly-ordered ids:
+
+```psql
+DROP TABLE IF EXISTS ids;
+SELECT id INTO ids FROM benchmark_zid_128 order by random();
+SELECT count(*)  FROM benchmark_zid_128 INNER JOIN ids ON benchmark_zid_128.id = ids.id;
+-- Time: 251.617 ms
+
+DROP TABLE IF EXISTS ids;
+SELECT id INTO ids FROM benchmark_zid_as_uuid order by random();
+SELECT count(*)  FROM benchmark_zid_as_uuid INNER JOIN ids ON benchmark_zid_as_uuid.id = ids.id;
+-- Time: 244.740 ms
+
+DROP TABLE IF EXISTS ids;
+SELECT id INTO ids FROM benchmark_uuid_generate_v4 order by random();
+SELECT count(*)  FROM benchmark_uuid_generate_v4 INNER JOIN ids ON benchmark_uuid_generate_v4.id = ids.id;
+-- Time: 236.810 ms
+```
+
+| Algorithm   | Time |
+|-------------|------|
+| zid_128     | 251  |
+| zid_as_uuid | 244  |
+| uuid_v4     | 236  |
+
+Summary: benchmarks are similar.
